@@ -24,12 +24,30 @@ class IndexHandler(BaseHandler):
         }
         return JSONResponse(body=body)
 
-class PersonSelfHandler(BaseHandler):
+class BasePersonHandler(BaseHandler):
+    def ldap_person_as_json(self, app, data):
+        href = app.router['person:detail'].url(parts={'id': data['oakPrimaryPersonID'][0]})
+        result = {
+            '_links': {'self': {'href': href}}
+        }
+        if 'cn' in data:
+            result['title'] = data['cn'][0]
+        if 'givenName' in data:
+            result['firstName'] = data['givenName'][0]
+        if 'sn' in data:
+            result['lastName'] = data['sn'][0]
+        if 'mail' in data:
+            result['primaryEmail'] = data['mail'][0]
+        if 'oakAlternativeMail' in data:
+            result['allEmail'] = data['oakAlternativeMail']
+        return result
+
+class PersonSelfHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request, with_user=True)
         raise HTTPFound(request.app.router['person:detail'].url(parts={'id': str(request.token.user)}))
 
-class PersonDetailHandler(BaseHandler):
+class PersonDetailHandler(BasePersonHandler):
     def authorize_request(self, request, person_id):
         if person_id == request.token.user and '/person/profile/view' in request.token.scopes:
             return
@@ -40,6 +58,7 @@ class PersonDetailHandler(BaseHandler):
         person_id = int(request.match_info['id'])
         self.authorize_request(request, person_id)
 
-        person_data = ldap.get_person(request.app, person_id)
+        person_data = self.ldap_person_as_json(request.app,
+                                               ldap.get_person(request.app, person_id))
         
         return JSONResponse(body=person_data)
