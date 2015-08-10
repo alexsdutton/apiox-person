@@ -76,8 +76,6 @@ class PersonDetailHandler(BasePersonHandler):
         yield from self.require_authentication(request)
         person_id = int(request.match_info['id'])
         scopes = yield from request.token.client.get_permissible_scopes_for_user(request.app, person_id)
-        yield from self.authorize_request(request, person_id)
-
         try:
             person_data = self.ldap_person_as_json(request.app,
                                                    ldap.get_person(request.app, person_id),
