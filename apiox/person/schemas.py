@@ -7,8 +7,13 @@ schemas = {
             'type': 'object',
             'oneOf': [{
                 'properties': {
-                    'scheme': {'enum': ['card-number']},
+                    'scheme': {'enum': ['cardNumber']},
                     'identifier': {'type': 'string', 'pattern': '^[0-9]{7}$'},
+                }
+            }, {
+                'properties': {
+                    'scheme': {'enum': ['cardNumberFull']},
+                    'identifier': {'type': 'string', 'pattern': r'^[0-9]{7}[0-9A-Z\-. +/$%]$$'},
                 }
             }, {
                 'properties': {
@@ -17,7 +22,7 @@ schemas = {
                 }
             }, {
                 'properties': {
-                    'scheme': {'enum': ['mifare-id']},
+                    'scheme': {'enum': ['mifareId']},
                     'identifier': {'type': 'string', 'pattern': '^[0-9a-f]{14}$'},
                 }
             }, {
@@ -27,7 +32,7 @@ schemas = {
                 }
             }, {
                 'properties': {
-                    'scheme': {'enum': ['orcid-id']},
+                    'scheme': {'enum': ['orcidId']},
                     'identifier': {'type': 'string', 'pattern': '^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}$'},
                 }
             }],

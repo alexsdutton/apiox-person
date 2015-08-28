@@ -18,10 +18,11 @@ _ldap_attributes = {
     'sn': {'local': 'lastName'},
     'mail': {'local': 'email'},
     'oakAlternativeMail': {'local': 'allEmail', 'multiple': True},
-    'oakUniversityBarcode': {'local': 'card-number', 'scope': '/person/profile/card-number'},
+    'oakUniversityBarcode': {'local': 'cardNumber', 'scope': '/person/profile/card-number'},
+    'oakUniversityBarcodeFull': {'local': 'cardNumberFull', 'scope': '/person/profile/card-number'},
     'oakOxfordSSOUsername': {'local': 'username', 'multipe': True},
-    'oakMifareID': {'local': 'mifare-id', 'scope': '/person/profile/mifare-id'},
-    'oakOrcidID': {'local': 'orcid-id'},
+    'oakMifareID': {'local': 'mifareId', 'scope': '/person/profile/mifare-id'},
+    'oakOrcidID': {'local': 'orcidId'},
 }
 
 _local_attribute_names = {v['local']: k for k, v in _ldap_attributes.items()}
