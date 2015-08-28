@@ -70,16 +70,16 @@ class BasePersonHandler(BaseHandler):
 class PersonSelfHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request, with_user=True)
-        raise HTTPFound(request.app.router['person:detail'].url(parts={'id': str(request.token.user)}))
+        raise HTTPFound(request.app.router['person:detail'].url(parts={'id': str(request.token['user_id'])}))
 
 class PersonDetailHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request)
         person_id = int(request.match_info['id'])
-        scopes = yield from request.token.client.get_permissible_scopes_for_user(request.app, person_id)
+        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_user(person_id)
         try:
             person_data = self.ldap_person_as_json(request.app,
-                                                   ldap.get_person(request.app, person_id),
+                                                   request.app['ldap'].get_person(person_id),
                                                    scopes)
         except ldap.NoSuchLDAPObject:
             raise HTTPNotFound
@@ -100,13 +100,12 @@ class PersonLookupHandler(BasePersonHandler):
                                            ldap.escape(item['identifier'])))
             queries[(_local_attribute_names[item['scheme']], item['identifier'])] = i
         filter = '(|{})'.format(''.join(filter)) if len(filter) > 1 else filter[0]
-        results = ldap.search(request.app,
-                              search_base='ou=people,dc=oak,dc=ox,dc=ac,dc=uk',
+        results = request.app['ldap'].search(search_base='ou=people,dc=oak,dc=ox,dc=ac,dc=uk',
                               search_filter=filter,
                               search_scope=ldap3.SUBTREE,
                               attributes=list(_local_attribute_names.values()))
         user_ids = set(ldap.parse_person_dn(r['dn']) for r in results)
-        scopes = yield from request.token.client.get_permissible_scopes_for_users(request.app, user_ids)
+        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_users(user_ids)
 
         finds = {}
         for result in results:
