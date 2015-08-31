@@ -17,7 +17,7 @@ def hook_in(app):
     app.router.add_route('GET', url_prefix + 'self',
                          handlers.PersonSelfHandler().get,
                          name='person:self')
-    app.router.add_route('GET', url_prefix + '{id:\d+}',
+    app.router.add_route('GET', url_prefix + '{id:[0-9]+}',
                          handlers.PersonDetailHandler().get,
                          name='person:detail')
     app.router.add_route('POST', url_prefix + 'lookup',
