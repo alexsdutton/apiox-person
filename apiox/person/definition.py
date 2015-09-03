@@ -27,11 +27,15 @@ def hook_in(app):
                       title='View profile',
                       description='Grants access to your name, email address, affiliations and phone number.',
                       available_to_user=True)
-    app['scopes'].add(name='/person/profile/card-number',
+    app['scopes'].add(name='/person/profile/barcode',
                       title='View University card barcode',
                       description='Grants access to view the barcode on your University card.',
                       available_to_user=True)
     app['scopes'].add(name='/person/profile/mifare-id',
                       title='View University card Mifare ID',
                       description='Grants access to view the Mifare (NFC) ID of your University card.',
+                      available_to_user=True)
+    app['scopes'].add(name='/person/profile/username',
+                      title='View SSO username',
+                      description='Grants access to view your Single-Sign-On username',
                       available_to_user=True)

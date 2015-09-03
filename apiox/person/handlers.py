@@ -8,24 +8,10 @@ from ..core import ldap
 from ..core.response import JSONResponse
 
 from apiox.person import __version__, app_name
-from .schemas import PERSON_LOOKUP_LIST
+from apiox.person.attributes import attributes, attributes_by_local, attributes_by_remote
+from .schemas import PERSON_LIST
 from aiohttp.web_exceptions import HTTPFound, HTTPForbidden, HTTPNotFound
-
-_ldap_attributes = {
-    'oakPrimaryPersonID': {'local': 'id'},
-    'cn': {'local': 'title'},
-    'givenName': {'local': 'firstName'},
-    'sn': {'local': 'lastName'},
-    'mail': {'local': 'email'},
-    'oakAlternativeMail': {'local': 'allEmail', 'multiple': True},
-    'oakUniversityBarcode': {'local': 'cardNumber', 'scope': '/person/profile/card-number'},
-    'oakUniversityBarcodeFull': {'local': 'cardNumberFull', 'scope': '/person/profile/card-number'},
-    'oakOxfordSSOUsername': {'local': 'username', 'multipe': True},
-    'oakMifareID': {'local': 'mifareId', 'scope': '/person/profile/mifare-id'},
-    'oakOrcidID': {'local': 'orcidId'},
-}
-
-_local_attribute_names = {v['local']: k for k, v in _ldap_attributes.items()}
+from aiohttp.errors import HttpBadRequest
 
 class IndexHandler(BaseHandler):
     def get(self, request):
@@ -57,14 +43,16 @@ class BasePersonHandler(BaseHandler):
             '_links': {'self': {'href': href}}
         }
         for name, values in data.items():
-            defn = _ldap_attributes.get(name)
+            print(name, values)
+            defn = attributes_by_remote.get(name)
+            print(defn)
             if defn is not None:
-                if defn.get('scope') and defn['scope'] not in scopes:
+                if defn.scope and defn.scope not in scopes:
                     continue
-                if defn.get('multiple'):
-                    result[defn['local']] = values
+                if defn.multiple:
+                    result[defn.local] = values
                 else:
-                    result[defn['local']] = values[0]
+                    result[defn.local] = values[0]
         return result
 
 class PersonSelfHandler(BasePersonHandler):
@@ -91,19 +79,29 @@ class PersonDetailHandler(BasePersonHandler):
 class PersonLookupHandler(BasePersonHandler):
     def post(self, request):
         yield from self.require_authentication(request)
-        body = yield from self.validated_json(request, app_name, PERSON_LOOKUP_LIST)
+        body = yield from self.validated_json(request, app_name, PERSON_LIST)
         filter = []
         queries = {}
         query_count = len(body)
         for i, item in enumerate(body):
-            filter.append('({}={})'.format(_local_attribute_names[item['scheme']],
-                                           ldap.escape(item['identifier'])))
-            queries[(_local_attribute_names[item['scheme']], item['identifier'])] = i
+            if len(item) != 1:
+                raise HttpBadRequest
+            k, v = item.popitem()
+            if isinstance(v, list):
+                if len(v) != 1:
+                    raise HttpBadRequest
+                v = v[0]
+            defn = attributes_by_local.get(k)
+            if not defn or not attributes_by_local[k].identifier:
+                continue
+            filter.append('({}={})'.format(defn.remote,
+                                            ldap.escape(v)))
+            queries[(defn.remote, v)] = i
         filter = '(|{})'.format(''.join(filter)) if len(filter) > 1 else filter[0]
         results = request.app['ldap'].search(search_base='ou=people,dc=oak,dc=ox,dc=ac,dc=uk',
                               search_filter=filter,
                               search_scope=ldap3.SUBTREE,
-                              attributes=list(_local_attribute_names.values()))
+                              attributes=list(a.remote for a in attributes))
         user_ids = set(ldap.parse_person_dn(r['dn']) for r in results)
         scopes = yield from (yield from request.token.client).get_permissible_scopes_for_users(user_ids)
 
@@ -113,7 +111,8 @@ class PersonLookupHandler(BasePersonHandler):
             item = self.ldap_person_as_json(request.app, result['attributes'],
                                             user_scopes) or {}
             for name, values in result['attributes'].items():
-                if _ldap_attributes[name].get('scope') and _ldap_attributes[name]['scope'] not in user_scopes:
+                defn = attributes_by_remote[name]
+                if defn.scope and defn.scope not in user_scopes:
                     continue
                 for value in values:
                     find = queries.get((name, value))
