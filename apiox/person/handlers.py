@@ -43,9 +43,8 @@ class BasePersonHandler(BaseHandler):
             '_links': {'self': {'href': href}}
         }
         for name, values in data.items():
-            print(name, values)
             defn = attributes_by_remote.get(name)
-            print(defn)
+            values = [v.decode() if isinstance(v, bytes) else v for v in values]
             if defn is not None:
                 if defn.scope and defn.scope not in scopes:
                     continue
