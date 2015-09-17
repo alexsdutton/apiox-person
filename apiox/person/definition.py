@@ -39,3 +39,6 @@ def hook_in(app):
                       title='View SSO username',
                       description='Grants access to view your Single-Sign-On username',
                       available_to_user=True)
+
+    from . import db
+    app['register_model'](db.CUDData)

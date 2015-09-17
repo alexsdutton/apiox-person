@@ -1,4 +1,4 @@
-from .attributes import attributes
+from .attributes import ldap_attributes, cud_attributes
 
 PERSON = 'person'
 PERSON_LIST = 'person-list'
@@ -8,7 +8,7 @@ _person_schema = {
     'properties': {
         a.local: {
             'type': 'string',
-        } for a in attributes
+        } for a in (ldap_attributes + cud_attributes)
     }
 }
 
