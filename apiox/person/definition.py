@@ -44,5 +44,8 @@ def hook_in(app):
                       description='Grants access to view your telephone number (internal and external)',
                       available_to_user=True)
 
+    from . import command
+    app['commands']['load_cud_data'] = command.load_cud_data
+
     from . import db
     app['register_model'](db.CUDData)
