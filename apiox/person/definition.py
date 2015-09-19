@@ -37,7 +37,7 @@ def hook_in(app):
                       available_to_user=True)
     app['scopes'].add(name='/person/profile/username',
                       title='View SSO username',
-                      description='Grants access to view your Single-Sign-On username',
+                      description='Grants access to view your Single Sign-On username',
                       available_to_user=True)
     app['scopes'].add(name='/person/profile/telephone',
                       title='View telephone number',
