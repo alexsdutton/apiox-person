@@ -61,16 +61,18 @@ class BasePersonHandler(BaseHandler):
                     result[attr.local] = values[0]
         if cud_data:
             for attr in cud_attributes:
-                if not cud_data.get(attr.remote) or \
+                if not cud_data[attr.remote] or \
                         (attr.scope and attr.scope not in scopes):
                     continue
-            result[attr.local] = cud_data[attr.remote]
+                result[attr.local] = cud_data[attr.remote]
         return result
+
 
 class PersonSelfHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request, with_user=True)
         raise HTTPFound(request.app.router['person:detail'].url(parts={'id': str(request.token['user_id'])}))
+
 
 class PersonDetailHandler(BasePersonHandler):
     def get(self, request):
@@ -132,12 +134,12 @@ class PersonLookupHandler(BasePersonHandler):
                                                       search_filter=ldap_filter,
                                                       search_scope=ldap3.SUBTREE,
                                                       attributes=list(a.remote for a in ldap_attributes))
-            import pprint
-            pprint.pprint(ldap_results)
             for ldap_result in ldap_results:
                 ldap_result = ldap_result['attributes']
                 for name, values in ldap_result.items():
                     attr = ldap_attributes_by_remote[name]
+                    if not attr.identifier:
+                        continue
                     for value in values:
                         key = (attr.local, value)
                         if key in queries:
@@ -148,12 +150,19 @@ class PersonLookupHandler(BasePersonHandler):
             cud_filter = reduce(or_, (cud_data.c[k].in_(v) for k, v in cud_filter.items()))
             cud_results = yield from CUDData.all(request.app, cud_filter)
             for cud_result in cud_results:
-                for name, value in cud_result.items():
+                for name, values in cud_result.items():
+                    if name.startswith('_'):
+                        continue
                     attr = cud_attributes_by_remote[name]
-                    key = (attr.local, value)
-                    if key in queries:
-                        results[queries[key]].update({'id': cud_result[cud_id],
-                                                      'cud': cud_result})
+                    if not attr.identifier:
+                        continue
+                    if not isinstance(values, list):
+                        values = (values,)
+                    for value in values:
+                        key = (attr.local, value)
+                        if key in queries:
+                            results[queries[key]].update({'id': cud_result[cud_id],
+                                                          'cud': cud_result})
 
         id_mapping = defaultdict(set)
         for i in results:
