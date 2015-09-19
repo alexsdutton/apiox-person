@@ -123,7 +123,6 @@ class PersonLookupHandler(BasePersonHandler):
                     continue
                 cud_filter[defn.remote].add(v)
                 queries[(defn.local, v)] = i
-        print("Q", queries)
 
         results = defaultdict(lambda: {'id': None, 'ldap': None, 'cud': None})
 
@@ -164,14 +163,12 @@ class PersonLookupHandler(BasePersonHandler):
         if missing_ldap:
             ldap_filter = ['({}={})'.format(ldap_id, i) for i in missing_ldap]
             ldap_filter = '(|{})'.format(''.join(ldap_filter)) if len(ldap_filter) > 1 else ldap_filter[0]
-            print(ldap_filter)
             ldap_results = request.app['ldap'].search(search_base='ou=people,dc=oak,dc=ox,dc=ac,dc=uk',
                                                       search_filter=ldap_filter,
                                                       search_scope=ldap3.SUBTREE,
                                                       attributes=list(a.remote for a in ldap_attributes))
             for ldap_result in ldap_results:
                 ldap_result = ldap_result['attributes']
-                print(ldap_result)
                 for i in id_mapping[int(ldap_result[ldap_id][0])]:
                     results[i]['ldap'] = ldap_result
 
@@ -183,8 +180,6 @@ class PersonLookupHandler(BasePersonHandler):
                     results[i]['cud'] = cud_result
 
         scopes = yield from (yield from request.token.client).get_permissible_scopes_for_users(r['id'] for r in results.values())
-
-        print(results)
 
         body = {
             '_links': {

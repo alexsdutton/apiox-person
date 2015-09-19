@@ -39,6 +39,10 @@ def hook_in(app):
                       title='View SSO username',
                       description='Grants access to view your Single-Sign-On username',
                       available_to_user=True)
+    app['scopes'].add(name='/person/profile/telephone',
+                      title='View telephone number',
+                      description='Grants access to view your telephone number (internal and external)',
+                      available_to_user=True)
 
     from . import db
     app['register_model'](db.CUDData)
