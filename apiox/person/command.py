@@ -71,10 +71,9 @@ def load_cud_data(app):
                                        .where(cud_data.c[cud_id] == bindparam('id'))
                                        .values(_nonce=nonce,
                                                **{a.remote: bindparam(a.local) for a in cud_attributes if a.local != 'id'}),
-                               [{cud_attributes_by_remote[k].local: v for k, v in s.items() if k.startswith('_')} for s in subjects if s[cud_id] in existing_person_ids])
+                               [{cud_attributes_by_remote[k].local: v for k, v in s.items() if not k.startswith('_')} for s in subjects if s[cud_id] in existing_person_ids])
 
             if missing_person_ids:
-                print(len([s for s in subjects if s[cud_id] in missing_person_ids]))
                 engine.execute(insert(cud_data),
                                [s for s in subjects if s[cud_id] in missing_person_ids])
 
