@@ -11,17 +11,17 @@ def hook_in(app):
                                     'version': __version__,
                                     'schemas': schemas.schemas}
 
-    app.router.add_route('GET', url_prefix,
-                         handlers.IndexHandler().get,
+    app.router.add_route('*', url_prefix,
+                         handlers.IndexHandler(),
                          name='person:index')
-    app.router.add_route('GET', url_prefix + 'self',
-                         handlers.PersonSelfHandler().get,
+    app.router.add_route('*', url_prefix + 'self',
+                         handlers.PersonSelfHandler(),
                          name='person:self')
-    app.router.add_route('GET', url_prefix + '{id:[0-9]+}',
-                         handlers.PersonDetailHandler().get,
+    app.router.add_route('*', url_prefix + '{id:[0-9]+}',
+                         handlers.PersonDetailHandler(),
                          name='person:detail')
-    app.router.add_route('POST', url_prefix + 'lookup',
-                         handlers.PersonLookupHandler().post,
+    app.router.add_route('*', url_prefix + 'lookup',
+                         handlers.PersonLookupHandler(),
                          name='person:lookup')
     app['scopes'].add(name='/person/profile/view',
                       title='View profile',
