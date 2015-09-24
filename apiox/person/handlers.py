@@ -17,8 +17,7 @@ from apiox.person.attributes import (
     cud_attributes, cud_attributes_by_local, cud_attributes_by_remote, cud_id,
 )
 from .schemas import PERSON_LIST
-from aiohttp.web_exceptions import HTTPFound, HTTPForbidden, HTTPNotFound
-from aiohttp.errors import HttpBadRequest
+from aiohttp.web_exceptions import HTTPFound, HTTPNotFound, HTTPBadRequest
 
 class IndexHandler(BaseHandler):
     def get(self, request):
@@ -106,11 +105,11 @@ class PersonLookupHandler(BasePersonHandler):
         query_count = len(body)
         for i, item in enumerate(body):
             if len(item) != 1:
-                raise HttpBadRequest
+                raise HTTPBadRequest
             k, v = item.popitem()
             if isinstance(v, list):
                 if len(v) != 1:
-                    raise HttpBadRequest
+                    raise HTTPBadRequest
                 v = v[0]
             if k in ldap_attributes_by_local:
                 defn = ldap_attributes_by_local[k]
