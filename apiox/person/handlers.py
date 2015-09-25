@@ -70,7 +70,10 @@ class BasePersonHandler(BaseHandler):
 class PersonSelfHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request, with_user=True)
-        raise HTTPFound(request.app.router['person:detail'].url(parts={'id': str(request.token['user_id'])}))
+        request.match_info['id'] = str(request.token['user_id'])
+        response = yield from request.app.router['person:detail'].handler(request)
+        response.headers['Content-Location'] = request.app.router['person:detail'].url(parts={'id': str(request.token['user_id'])})
+        return response
 
 
 class PersonDetailHandler(BasePersonHandler):
