@@ -20,8 +20,8 @@ cud_attributes = (
     Attribute('cud:fk:oak_primary_person_id', 'id', None, False, True),
     Attribute('cud:uas:universitycard_mifare_id', 'mifareId', '/person/profile/mifare-id', False, True),
     Attribute('cud:cas:internal_tel', 'telephoneExtension', '/person/profile/telephone', True, False),
-    Attribute('cud:cas:title', 'honorific', None, False, False),
-    Attribute('cud:cas:suffix', 'suffix', None, False, False),
+    Attribute('cud:cas:title', 'honorificPrefix', None, False, False),
+    Attribute('cud:cas:suffix', 'honorificSuffix', None, False, False),
 )
 
 ldap_attributes_by_local = {a.local: a for a in ldap_attributes}
