@@ -11,7 +11,7 @@ ldap_attributes = (
     Attribute('oakAlternativeMail', 'allEmail', None, True, True),
     Attribute('oakUniversityBarcode', 'barcode', '/person/profile/barcode', False, True),
     Attribute('oakUniversityBarcodeFull', 'barcodeFull', '/person/profile/barcode', False, True),
-    Attribute('oakOxfordSSOUsername', 'username', None, '/person/profile/username', True),
+    Attribute('oakOxfordSSOUsername', 'username', '/person/profile/username', True, True),
 #    Attribute('oakMifareID', 'mifareId', None, '/person/profile/mifare-id', True),
     Attribute('oakOrcidID', 'orcidId', None, False, True),
 )
