@@ -99,17 +99,31 @@ class PersonDetailHandler(BasePersonHandler):
         return JSONResponse(body=person_data)
 
 class PersonLookupHandler(BasePersonHandler):
+    @asyncio.coroutine
+    def get(self, request):
+        yield from self.require_authentication(request)
+        data = []
+        for k, v in request.GET.items():
+            data.append({k: v})
+        if len(data) > 100:
+            raise HTTPBadRequest
+        return (yield from self.common(request, data))
+
+    @asyncio.coroutine
     def post(self, request):
         yield from self.require_authentication(request)
-        body = yield from self.validated_json(request, app_name, PERSON_LIST)
+        data = yield from self.validated_json(request, app_name, PERSON_LIST)
+        return (yield from self.common(request, data))
+
+    @asyncio.coroutine
+    def common(self, request, data):
         ldap_filter, cud_filter = [], defaultdict(set)
         queries = {}
-        cud_data_queries = {}
-        query_count = len(body)
-        for i, item in enumerate(body):
+        query_count = len(data)
+        for i, item in enumerate(data):
             if len(item) != 1:
                 raise HTTPBadRequest
-            k, v = item.popitem()
+            k, v = next(iter(item.items()))
             if isinstance(v, list):
                 if len(v) != 1:
                     raise HTTPBadRequest
@@ -195,14 +209,20 @@ class PersonLookupHandler(BasePersonHandler):
         body = {
             '_links': {
                 'self': {'href': request.app.router['person:lookup'].url()},
+            },
+            '_embedded': {
                 'item': [],
             }
         }
-        for i in range(query_count):
+        for query, i in zip(data, range(query_count)):
+            item = {
+                'query': query,
+            }
             result = results.get(i)
             if result:
                 result = self.person_as_json(request.app,
                                              result['ldap'], result['cud'],
                                              scopes[result['id']])
-            body['_links']['item'].append(result or {})
+                item['result'] = result
+            body['_embedded']['item'].append({"_embedded": item})
         return JSONResponse(body=body)
