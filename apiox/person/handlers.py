@@ -223,6 +223,7 @@ class PersonLookupHandler(BasePersonHandler):
                 result = self.person_as_json(request.app,
                                              result['ldap'], result['cud'],
                                              scopes[result['id']])
-                item['result'] = result
+                if result:
+                    item['result'] = result
             body['_embedded']['item'].append({"_embedded": item})
         return JSONResponse(body=body)
