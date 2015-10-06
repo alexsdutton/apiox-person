@@ -20,6 +20,7 @@ from .schemas import PERSON_LIST
 from aiohttp.web_exceptions import HTTPFound, HTTPNotFound, HTTPBadRequest
 
 class IndexHandler(BaseHandler):
+    @asyncio.coroutine
     def get(self, request):
         body = {
             'title': 'Person API',
@@ -68,6 +69,7 @@ class BasePersonHandler(BaseHandler):
 
 
 class PersonSelfHandler(BasePersonHandler):
+    @asyncio.coroutine
     def get(self, request):
         yield from self.require_authentication(request, with_user=True)
         request.match_info['id'] = str(request.token['user_id'])
@@ -77,6 +79,7 @@ class PersonSelfHandler(BasePersonHandler):
 
 
 class PersonDetailHandler(BasePersonHandler):
+    @asyncio.coroutine
     def get(self, request):
         yield from self.require_authentication(request)
         person_id = int(request.match_info['id'])
