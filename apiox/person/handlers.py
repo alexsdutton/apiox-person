@@ -11,7 +11,7 @@ from ..core.response import JSONResponse
 
 from .db import CUDData, cud_data
 
-from apiox.person import __version__, app_name
+from apiox.person import __version__, api_id
 from apiox.person.attributes import (
     ldap_attributes, ldap_attributes_by_local, ldap_attributes_by_remote, ldap_id,
     cud_attributes, cud_attributes_by_local, cud_attributes_by_remote, cud_id,
@@ -20,6 +20,7 @@ from .schemas import PERSON_LIST
 from aiohttp.web_exceptions import HTTPFound, HTTPNotFound, HTTPBadRequest
 
 class IndexHandler(BaseHandler):
+    @asyncio.coroutine
     def get(self, request):
         body = {
             'title': 'Person API',
@@ -68,6 +69,7 @@ class BasePersonHandler(BaseHandler):
 
 
 class PersonSelfHandler(BasePersonHandler):
+    @asyncio.coroutine
     def get(self, request):
         yield from self.require_authentication(request, with_user=True)
         request.match_info['id'] = str(request.token['user_id'])
@@ -77,6 +79,7 @@ class PersonSelfHandler(BasePersonHandler):
 
 
 class PersonDetailHandler(BasePersonHandler):
+    @asyncio.coroutine
     def get(self, request):
         yield from self.require_authentication(request)
         person_id = int(request.match_info['id'])
@@ -112,7 +115,7 @@ class PersonLookupHandler(BasePersonHandler):
     @asyncio.coroutine
     def post(self, request):
         yield from self.require_authentication(request)
-        data = yield from self.validated_json(request, app_name, PERSON_LIST)
+        data = yield from self.validated_json(request, api_id, PERSON_LIST)
         return (yield from self.common(request, data))
 
     @asyncio.coroutine
