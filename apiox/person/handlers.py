@@ -83,7 +83,8 @@ class PersonDetailHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request)
         person_id = int(request.match_info['id'])
-        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_user(person_id)
+        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_user(person_id,
+                                                                                              token=request.token)
         try:
             if any((not attr.scope or attr.scope in scopes) for attr in cud_attributes if attr.local != 'id'):
                 cud_data = yield from CUDData.get(request.app,
@@ -207,7 +208,8 @@ class PersonLookupHandler(BasePersonHandler):
                 for i in id_mapping[cud_result[cud_id]]:
                     results[i]['cud'] = cud_result
 
-        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_users(r['id'] for r in results.values())
+        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_users((r['id'] for r in results.values()),
+                                                                                               token=request.token)
 
         body = {
             '_links': {
