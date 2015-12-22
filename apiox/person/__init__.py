@@ -1,4 +1,5 @@
 import asyncio
+from apiox.core.db import API
 
 __version__ = '0.1'
 
@@ -6,12 +7,33 @@ api_id = 'person'
 
 url_prefix = '/{}/'.format(api_id)
 
-from . import handlers
-
-
 @asyncio.coroutine
 def setup(app):
-    yield from app['api'].register(api_id, {
+    from .schemas import schemas
+    from . import handlers
+
+    app['schemas'][api_id] = schemas
+
+    app.router.add_route('*', url_prefix,
+                         handlers.IndexHandler(),
+                         name='person:index')
+    app.router.add_route('*', url_prefix + 'self',
+                         handlers.PersonSelfHandler(),
+                         name='person:self')
+    app.router.add_route('*', url_prefix + '{id:[0-9]+}',
+                         handlers.PersonDetailHandler(),
+                         name='person:detail')
+    app.router.add_route('*', url_prefix + 'lookup',
+                         handlers.PersonLookupHandler(),
+                         name='person:lookup')
+
+    from . import command
+    app['commands']['load_cud_data'] = command.load_cud_data
+
+
+def declare_api(session):
+    session.merge(API.from_json({
+        'id': api_id,
         'title': 'Person API',
         'description': 'Provides metadata about people, and allows lookup based on identifiers.',
         'version': __version__,
@@ -42,23 +64,4 @@ def setup(app):
             'description': 'Grants access to view your telephone number (internal and external)',
             'grantedToUser': True,
         }]
-    }, deregister_on_finish=True)
-
-    app.router.add_route('*', url_prefix,
-                         handlers.IndexHandler(),
-                         name='person:index')
-    app.router.add_route('*', url_prefix + 'self',
-                         handlers.PersonSelfHandler(),
-                         name='person:self')
-    app.router.add_route('*', url_prefix + '{id:[0-9]+}',
-                         handlers.PersonDetailHandler(),
-                         name='person:detail')
-    app.router.add_route('*', url_prefix + 'lookup',
-                         handlers.PersonLookupHandler(),
-                         name='person:lookup')
-
-    from . import command
-    app['commands']['load_cud_data'] = command.load_cud_data
-
-    from . import db
-    app['register_model'](db.CUDData)
+    }))
