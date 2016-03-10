@@ -11,7 +11,7 @@ from ..core.response import JSONResponse
 
 from .db import CUDData, cud_data
 
-from apiox.person import __version__, app_name
+from apiox.person import __version__, api_id
 from apiox.person.attributes import (
     ldap_attributes, ldap_attributes_by_local, ldap_attributes_by_remote, ldap_id,
     cud_attributes, cud_attributes_by_local, cud_attributes_by_remote, cud_id,
@@ -43,7 +43,8 @@ class IndexHandler(BaseHandler):
 
 class BasePersonHandler(BaseHandler):
     def person_as_json(self, app, ldap_data, cud_data=None, scopes=()):
-        if '/person/profile/view' not in scopes:
+        scope_ids = set(scope.id for scope in scopes)
+        if '/person/profile/view' not in scope_ids:
             return None
         href = app.router['person:detail'].url(parts={'id': int(ldap_data[ldap_id][0])})
         result = {
@@ -53,7 +54,7 @@ class BasePersonHandler(BaseHandler):
             attr = ldap_attributes_by_remote.get(name)
             values = [v.decode() if isinstance(v, bytes) else v for v in values]
             if attr is not None:
-                if attr.scope and attr.scope not in scopes:
+                if attr.scope and attr.scope not in scope_ids:
                     continue
                 if attr.multiple:
                     result[attr.local] = values
@@ -61,20 +62,20 @@ class BasePersonHandler(BaseHandler):
                     result[attr.local] = values[0]
         if cud_data:
             for attr in cud_attributes:
-                if not cud_data[attr.remote] or \
-                        (attr.scope and attr.scope not in scopes):
+                if not getattr(cud_data, CUDData.column_mapping[attr.remote]) or \
+                        (attr.scope and attr.scope not in scope_ids):
                     continue
-                result[attr.local] = cud_data[attr.remote]
+                result[attr.local] = getattr(cud_data, CUDData.column_mapping[attr.remote])
         return result
 
 
 class PersonSelfHandler(BasePersonHandler):
     @asyncio.coroutine
     def get(self, request):
-        yield from self.require_authentication(request, with_user=True)
-        request.match_info['id'] = str(request.token['user_id'])
+        yield from self.require_authentication(request, require_user=True)
+        request.match_info['id'] = str(request.token.user_id)
         response = yield from request.app.router['person:detail'].handler(request)
-        response.headers['Content-Location'] = request.app.router['person:detail'].url(parts={'id': str(request.token['user_id'])})
+        response.headers['Content-Location'] = request.app.router['person:detail'].url(parts={'id': str(request.token.user_id)})
         return response
 
 
@@ -83,14 +84,14 @@ class PersonDetailHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request)
         person_id = int(request.match_info['id'])
-        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_user(person_id,
-                                                                                              token=request.token)
+        scopes = yield from request.token.client.get_permissible_scopes_for_user(request.app, request.session,
+                                                                                 person_id)
         try:
             if any((not attr.scope or attr.scope in scopes) for attr in cud_attributes if attr.local != 'id'):
-                cud_data = yield from CUDData.get(request.app,
-                                                  **{cud_attributes_by_local['id'].remote: person_id})
+                cud_data = request.session.query(CUDData).get(person_id)
             else:
                 cud_data = None
+            print(request.app['ldap'].get_person(person_id), cud_data)
             person_data = self.person_as_json(request.app,
                                               ldap_data=request.app['ldap'].get_person(person_id),
                                               cud_data=cud_data,
@@ -116,7 +117,7 @@ class PersonLookupHandler(BasePersonHandler):
     @asyncio.coroutine
     def post(self, request):
         yield from self.require_authentication(request)
-        data = yield from self.validated_json(request, app_name, PERSON_LIST)
+        data = yield from self.validated_json(request, api_id, PERSON_LIST)
         return (yield from self.common(request, data))
 
     @asyncio.coroutine
@@ -167,21 +168,23 @@ class PersonLookupHandler(BasePersonHandler):
                                                           'ldap': ldap_result})
 
         if cud_filter:
-            cud_filter = reduce(or_, (cud_data.c[k].in_(v) for k, v in cud_filter.items()))
-            cud_results = yield from CUDData.all(request.app, cud_filter)
+            cud_filter = reduce(or_, (getattr(CUDData, CUDData.column_mapping[k]).in_(v) for k, v in cud_filter.items()))
+            cud_results = request.session.query(CUDData).filter(cud_filter).all()
             for cud_result in cud_results:
-                for name, values in cud_result.items():
+                for attr, name in CUDData.column_mapping.items():
                     if name.startswith('_'):
                         continue
-                    attr = cud_attributes_by_remote[name]
+                    print(name, attr)
+                    attr = cud_attributes_by_remote[attr]
                     if not attr.identifier:
                         continue
+                    values = getattr(cud_result, name)
                     if not isinstance(values, list):
                         values = (values,)
                     for value in values:
                         key = (attr.local, value)
                         if key in queries:
-                            results[queries[key]].update({'id': cud_result[cud_id],
+                            results[queries[key]].update({'id': cud_result.id,
                                                           'cud': cud_result})
 
         id_mapping = defaultdict(set)
@@ -203,13 +206,13 @@ class PersonLookupHandler(BasePersonHandler):
 
         missing_cud = {r['id'] for r in results.values() if not r['cud']}
         if missing_cud:
-            cud_results = yield from CUDData.all(request.app, cud_data.c[cud_id].in_(missing_cud))
+            cud_results = request.session.query(CUDData).filter(CUDData.id.in_(missing_cud)).all()
             for cud_result in cud_results:
-                for i in id_mapping[cud_result[cud_id]]:
+                for i in id_mapping[cud_result.id]:
                     results[i]['cud'] = cud_result
 
-        scopes = yield from (yield from request.token.client).get_permissible_scopes_for_users((r['id'] for r in results.values()),
-                                                                                               token=request.token)
+        scopes = yield from request.token.client.get_permissible_scopes_for_users(
+            request.app, request.session, [r['id'] for r in results.values()])
 
         body = {
             '_links': {
