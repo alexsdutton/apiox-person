@@ -85,7 +85,7 @@ class PersonDetailHandler(BasePersonHandler):
         yield from self.require_authentication(request)
         person_id = int(request.match_info['id'])
         scopes = yield from request.token.client.get_permissible_scopes_for_user(request.app, request.session,
-                                                                                 person_id)
+                                                                                 person_id, token=request.token)
         try:
             if any((not attr.scope or attr.scope in scopes) for attr in cud_attributes if attr.local != 'id'):
                 cud_data = request.session.query(CUDData).get(person_id)
