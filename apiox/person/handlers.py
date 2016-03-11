@@ -74,7 +74,7 @@ class PersonSelfHandler(BasePersonHandler):
     def get(self, request):
         yield from self.require_authentication(request, require_user=True)
         request.match_info['id'] = str(request.token.user_id)
-        response = yield from request.app.router['person:detail'].handler(request)
+        response = yield from PersonDetailHandler()(request)
         response.headers['Content-Location'] = request.app.router['person:detail'].url(parts={'id': str(request.token.user_id)})
         return response
 
