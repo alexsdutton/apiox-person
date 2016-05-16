@@ -42,12 +42,15 @@ class IndexHandler(BaseHandler):
 
 
 class BasePersonHandler(BaseHandler):
-    def person_as_json(self, app, ldap_data, cud_data=None, scopes=()):
+    @classmethod
+    def person_as_json(cls, app, ldap_data, cud_data=None, scopes=()):
         scope_ids = set(scope.id for scope in scopes)
         if '/person/profile/view' not in scope_ids:
             return None
         href = app.router['person:detail'].url(parts={'id': int(ldap_data[ldap_id][0])})
         result = {
+            '@type': 'Person',
+            '@id': href,
             '_links': {'self': {'href': href}}
         }
         for name, values in ldap_data.items():
@@ -91,7 +94,6 @@ class PersonDetailHandler(BasePersonHandler):
                 cud_data = request.session.query(CUDData).get(person_id)
             else:
                 cud_data = None
-            print(request.app['ldap'].get_person(person_id), cud_data)
             person_data = self.person_as_json(request.app,
                                               ldap_data=request.app['ldap'].get_person(person_id),
                                               cud_data=cud_data,
@@ -102,6 +104,7 @@ class PersonDetailHandler(BasePersonHandler):
             raise HTTPNotFound
         
         return JSONResponse(body=person_data)
+
 
 class PersonLookupHandler(BasePersonHandler):
     @asyncio.coroutine
@@ -174,7 +177,6 @@ class PersonLookupHandler(BasePersonHandler):
                 for attr, name in CUDData.column_mapping.items():
                     if name.startswith('_'):
                         continue
-                    print(name, attr)
                     attr = cud_attributes_by_remote[attr]
                     if not attr.identifier:
                         continue
